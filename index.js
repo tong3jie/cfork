@@ -98,7 +98,7 @@ function fork(options) {
 
     disconnects[worker.process.pid] = utility.logDate();
     if (allow()) {
-      newWorker = forkWorker(worker._clusterSettings);
+      newWorker = forkWorker(worker._clusterSettings, worker.env);
       newWorker._clusterSettings = worker._clusterSettings;
       log('[%s] [cfork:master:%s] new worker:%s fork (state: %s)', utility.logDate(), process.pid, newWorker.process.pid, newWorker.state);
     } else {
@@ -124,7 +124,7 @@ function fork(options) {
 
     unexpectedCount++;
     if (allow()) {
-      newWorker = forkWorker(worker._clusterSettings);
+      newWorker = forkWorker(worker._clusterSettings, worker.env);
       newWorker._clusterSettings = worker._clusterSettings;
       log('[%s] [cfork:master:%s] new worker:%s fork (state: %s)', utility.logDate(), process.pid, newWorker.process.pid, newWorker.state);
     } else {
@@ -252,6 +252,8 @@ function fork(options) {
       cluster.settings = settings;
       cluster.setupMaster();
     }
-    return cluster.fork(env);
+    const worker = cluster.fork(env);
+    worker.env = env;
+    return worker;
   }
 }
