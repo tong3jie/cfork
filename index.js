@@ -35,12 +35,11 @@ function fork(options) {
   var limit = options.limit || 60;
   var duration = options.duration || 60000; // 1 min
   var reforks = [];
-  var attachedEnv = options.env || {};
   var newWorker;
 
   if (options.exec) {
     var opts = {
-      exec: options.exec
+      exec: options.exec,
     };
 
     if (options.execArgv !== undefined) {
@@ -57,17 +56,13 @@ function fork(options) {
       opts.windowsHide = options.windowsHide;
     }
 
-
     // https://github.com/gotwarlost/istanbul#multiple-process-usage
     // Multiple Process under istanbul
     if (options.autoCoverage && process.env.running_under_istanbul) {
       // use coverage for forked process
       // disabled reporting and output for child process
       // enable pid in child process coverage filename
-      var args = [
-        'cover', '--report', 'none', '--print', 'none', '--include-pid',
-        opts.exec,
-      ];
+      var args = ['cover', '--report', 'none', '--print', 'none', '--include-pid', opts.exec];
       if (opts.args && opts.args.length > 0) {
         args.push('--');
         args = args.concat(opts.args);
@@ -89,19 +84,15 @@ function fork(options) {
     disconnectCount++;
     var isDead = worker.isDead && worker.isDead();
     var propertyName = worker.hasOwnProperty('exitedAfterDisconnect') ? 'exitedAfterDisconnect' : 'suicide';
-    log('[%s] [cfork:master:%s] worker:%s disconnect (%s: %s, state: %s, isDead: %s, worker.disableRefork: %s)',
-      utility.logDate(), process.pid, worker.process.pid, propertyName, worker[propertyName],
-      worker.state, isDead, worker.disableRefork);
+    log('[%s] [cfork:master:%s] worker:%s disconnect (%s: %s, state: %s, isDead: %s, worker.disableRefork: %s)', utility.logDate(), process.pid, worker.process.pid, propertyName, worker[propertyName], worker.state, isDead, worker.disableRefork);
     if (isDead) {
       // worker has terminated before disconnect
-      log('[%s] [cfork:master:%s] don\'t fork, because worker:%s exit event emit before disconnect',
-        utility.logDate(), process.pid, worker.process.pid);
+      log("[%s] [cfork:master:%s] don't fork, because worker:%s exit event emit before disconnect", utility.logDate(), process.pid, worker.process.pid);
       return;
     }
     if (worker.disableRefork) {
       // worker has terminated by master, like egg-cluster master will set disableRefork to true
-      log('[%s] [cfork:master:%s] don\'t fork, because worker:%s will be kill soon',
-        utility.logDate(), process.pid, worker.process.pid);
+      log("[%s] [cfork:master:%s] don't fork, because worker:%s will be kill soon", utility.logDate(), process.pid, worker.process.pid);
       return;
     }
 
@@ -109,11 +100,9 @@ function fork(options) {
     if (allow()) {
       newWorker = forkWorker(worker._clusterSettings);
       newWorker._clusterSettings = worker._clusterSettings;
-      log('[%s] [cfork:master:%s] new worker:%s fork (state: %s)',
-        utility.logDate(), process.pid, newWorker.process.pid, newWorker.state);
+      log('[%s] [cfork:master:%s] new worker:%s fork (state: %s)', utility.logDate(), process.pid, newWorker.process.pid, newWorker.state);
     } else {
-      log('[%s] [cfork:master:%s] don\'t fork new work (refork: %s)',
-        utility.logDate(), process.pid, refork);
+      log("[%s] [cfork:master:%s] don't fork new work (refork: %s)", utility.logDate(), process.pid, refork);
     }
   });
 
@@ -122,9 +111,7 @@ function fork(options) {
     var isExpected = !!disconnects[worker.process.pid];
     var isDead = worker.isDead && worker.isDead();
     var propertyName = worker.hasOwnProperty('exitedAfterDisconnect') ? 'exitedAfterDisconnect' : 'suicide';
-    log('[%s] [cfork:master:%s] worker:%s exit (code: %s, %s: %s, state: %s, isDead: %s, isExpected: %s, worker.disableRefork: %s)',
-      utility.logDate(), process.pid, worker.process.pid, code, propertyName, worker[propertyName],
-      worker.state, isDead, isExpected, worker.disableRefork);
+    log('[%s] [cfork:master:%s] worker:%s exit (code: %s, %s: %s, state: %s, isDead: %s, isExpected: %s, worker.disableRefork: %s)', utility.logDate(), process.pid, worker.process.pid, code, propertyName, worker[propertyName], worker.state, isDead, isExpected, worker.disableRefork);
     if (isExpected) {
       delete disconnects[worker.process.pid];
       // worker disconnect first, exit expected
@@ -139,11 +126,9 @@ function fork(options) {
     if (allow()) {
       newWorker = forkWorker(worker._clusterSettings);
       newWorker._clusterSettings = worker._clusterSettings;
-      log('[%s] [cfork:master:%s] new worker:%s fork (state: %s)',
-        utility.logDate(), process.pid, newWorker.process.pid, newWorker.state);
+      log('[%s] [cfork:master:%s] new worker:%s fork (state: %s)', utility.logDate(), process.pid, newWorker.process.pid, newWorker.state);
     } else {
-      log('[%s] [cfork:master:%s] don\'t fork new work (refork: %s)',
-        utility.logDate(), process.pid, refork);
+      log("[%s] [cfork:master:%s] don't fork new work (refork: %s)", utility.logDate(), process.pid, refork);
     }
     cluster.emit('unexpectedExit', worker, code, signal);
   });
@@ -161,22 +146,27 @@ function fork(options) {
       cluster.on('reachReforkLimit', onReachReforkLimit);
     }
   });
-
-  for (var i = 0; i < count; i++) {
-    newWorker = forkWorker();
-    newWorker._clusterSettings = cluster.settings;
+  if (options.model === 'both' || !options.model) {
+    for (let i = 0; i < count; i++) {
+      newWorker = forkWorker();
+      newWorker._clusterSettings = cluster.settings;
+    }
+  } else if (options.model === 'each') {
+    options.envs.forEach(env => {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      newWorker = forkWorker(null, env);
+      newWorker._clusterSettings = cluster.settings;
+    });
   }
-
   // fork slaves after workers are forked
   if (options.slaves) {
     var slaves = Array.isArray(options.slaves) ? options.slaves : [options.slaves];
-    slaves.map(normalizeSlaveConfig)
-      .forEach(function(settings) {
-        if (settings) {
-          newWorker = forkWorker(settings);
-          newWorker._clusterSettings = settings;
-        }
-      });
+    slaves.map(normalizeSlaveConfig).forEach(function (settings) {
+      if (settings) {
+        newWorker = forkWorker(settings);
+        newWorker._clusterSettings = settings;
+      }
+    });
   }
 
   return cluster;
@@ -225,12 +215,10 @@ function fork(options) {
   function onUnexpected(worker, code, signal) {
     var exitCode = worker.process.exitCode;
     var propertyName = worker.hasOwnProperty('exitedAfterDisconnect') ? 'exitedAfterDisconnect' : 'suicide';
-    var err = new Error(util.format('worker:%s died unexpected (code: %s, signal: %s, %s: %s, state: %s)',
-      worker.process.pid, exitCode, signal, propertyName, worker[propertyName], worker.state));
+    var err = new Error(util.format('worker:%s died unexpected (code: %s, signal: %s, %s: %s, state: %s)', worker.process.pid, exitCode, signal, propertyName, worker[propertyName], worker.state));
     err.name = 'WorkerDiedUnexpectedError';
 
-    console.error('[%s] [cfork:master:%s] (total %d disconnect, %d unexpected exit) %s',
-      utility.logDate(), process.pid, disconnectCount, unexpectedCount, err.stack);
+    console.error('[%s] [cfork:master:%s] (total %d disconnect, %d unexpected exit) %s', utility.logDate(), process.pid, disconnectCount, unexpectedCount, err.stack);
   }
 
   /**
@@ -238,8 +226,7 @@ function fork(options) {
    */
 
   function onReachReforkLimit() {
-    console.error('[%s] [cfork:master:%s] worker died too fast (total %d disconnect, %d unexpected exit)',
-      utility.logDate(), process.pid, disconnectCount, unexpectedCount);
+    console.error('[%s] [cfork:master:%s] worker died too fast (total %d disconnect, %d unexpected exit)', utility.logDate(), process.pid, disconnectCount, unexpectedCount);
   }
 
   /**
@@ -260,11 +247,11 @@ function fork(options) {
   /**
    * fork worker with certain settings
    */
-  function forkWorker(settings) {
+  function forkWorker(settings, env) {
     if (settings) {
       cluster.settings = settings;
       cluster.setupMaster();
     }
-    return cluster.fork(attachedEnv);
+    return cluster.fork(env);
   }
 }
