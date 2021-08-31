@@ -81,26 +81,37 @@ function fork(options) {
   var disconnects = {};
   var disconnectCount = 0;
   var unexpectedCount = 0;
-  cluster.on('checkWorker', () => {
-    const workerSize = workerManger.size;
+  function checkWorker() {
+    setInterval(() => {
+      const workerSize = workerManger.size;
+      if (options.model === 'file') {
+        options.envs = JSON.parse(fs.readFileSync(options.configFile, 'utf8')).envs;
+      }
 
-    if (options.model === 'file') {
-      options.envs = fs.readFileSync(path.join(options.configFile), 'utf8');
-    }
-    if (workerSize < options.envs.length || count) {
-      //TODO
-      options.envs
-        .filter(item => !workerManger.has(item))
-        .forEach(item => {
-          newWorker = forkWorker(null, item);
-          newWorker._clusterSettings = cluster.settings;
-        });
-    }
+      if (workerSize < (options.envs.length || count)) {
+        options.envs
+          .filter(item => workerManger.has(item))
+          .forEach(item => {
+            newWorker = forkWorker(null, item);
+            newWorker._clusterSettings = cluster.settings;
+          });
+      }
 
-    setTimeout(() => {
-      cluster.emit('checkWorker');
+      if (workerSize > (options.envs.length || count)) {
+        for (const key of workerManger.keys()) {
+          if (!options.envs.includes(key)) {
+            const worker = workerManger.get(key);
+            worker.disableRefork = true;
+            worker.kill('cancel');
+            workerManger.delete(key);
+          }
+        }
+      }
+      checkWorker();
     }, 60000);
-  });
+  }
+
+  checkWorker();
 
   cluster.on('fork', worker => {
     workerManger.set(JSON.stringify(worker.env) || worker.process.pid, worker);
