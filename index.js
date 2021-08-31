@@ -196,7 +196,7 @@ function fork(options) {
       newWorker._clusterSettings = cluster.settings;
     });
   } else if (options.model === 'file') {
-    options.envs = fs.readFileSync(path.join(__dirname, options.configFile), 'utf8');
+    options.envs = fs.readFileSync(options.configFile, 'utf8');
     options.envs.forEach(env => {
       newWorker = forkWorker(null, env);
       newWorker._clusterSettings = cluster.settings;
