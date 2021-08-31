@@ -91,7 +91,12 @@ process.on('uncaughtException', err => {
 - **autoCoverage**: auto fork with istanbul when `running_under_istanbul` env set, default is `false`
 - **env**: attach some environment variable key-value pairs to the worker / slave process, default to an empty object.
 - **windowsHide**: Hide the forked processes console window that would normally be created on Windows systems, default to false.
-
+- **evns**: if you want every worker has different env config ,you can set this field, default is [].example, envs:[{name:1},{name:2}]
+- **model**: 
+  - 'both':every worker has same evn config
+  - 'each':every worker has different evn config
+  - 'file':envs config is file path
+- **configFile**: evns config file path
 ## License
 
 ```

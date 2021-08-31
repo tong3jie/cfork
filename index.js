@@ -4,6 +4,8 @@ var cluster = require('cluster');
 var os = require('os');
 var util = require('util');
 var utility = require('utility');
+const fs = require('fs');
+const path = require('path');
 
 var defer = global.setImmediate || process.nextTick;
 
@@ -17,8 +19,8 @@ module.exports = fork;
  *   - {Array} [args]      exec arguments
  *   - {Array} [slaves]    slave processes
  *   - {Boolean} [silent]  whether or not to send output to parent's stdio, default is `false`
- *   - {Number} [count]    worker num, defualt is `os.cpus().length`
- *   - {Boolean} [refork]  refork when disconect and unexpected exit, default is `true`
+ *   - {Number} [count]    worker num, default is `os.cpus().length`
+ *   - {Boolean} [refork]  refork when disconnect and unexpected exit, default is `true`
  *   - {Boolean} [autoCoverage] auto fork with istanbul when `running_under_istanbul` env set, default is `false`
  *   - {Boolean} [windowsHide] Hide the forked processes console window that would normally be created on Windows systems. Default: false.
  * @return {Cluster}
@@ -30,11 +32,12 @@ function fork(options) {
   }
 
   options = options || {};
-  var count = options.count || os.cpus().length;
+  var count = options.envs || options.count || os.cpus().length;
   var refork = options.refork !== false;
   var limit = options.limit || 60;
   var duration = options.duration || 60000; // 1 min
   var reforks = [];
+  const workerManger = new Map();
   var newWorker;
 
   if (options.exec) {
@@ -78,8 +81,32 @@ function fork(options) {
   var disconnects = {};
   var disconnectCount = 0;
   var unexpectedCount = 0;
+  cluster.on('checkWorker', () => {
+    const workerSize = workerManger.size;
 
+    if (options.model === 'file') {
+      options.envs = fs.readFileSync(path.join(options.configFile), 'utf8');
+    }
+    if (workerSize < options.envs.length || count) {
+      //TODO
+      options.envs
+        .filter(item => !workerManger.has(item))
+        .forEach(item => {
+          newWorker = forkWorker(null, item);
+          newWorker._clusterSettings = cluster.settings;
+        });
+    }
+
+    setTimeout(() => {
+      cluster.emit('checkWorker');
+    }, 60000);
+  });
+
+  cluster.on('fork', worker => {
+    workerManger.set(JSON.stringify(worker.env) || worker.process.pid, worker);
+  });
   cluster.on('disconnect', function (worker) {
+    workerManger.delete(worker.process.pid);
     var log = console[worker.disableRefork ? 'info' : 'error'];
     disconnectCount++;
     var isDead = worker.isDead && worker.isDead();
@@ -107,6 +134,7 @@ function fork(options) {
   });
 
   cluster.on('exit', function (worker, code, signal) {
+    workerManger.delete(worker.process.pid);
     var log = console[worker.disableRefork ? 'info' : 'error'];
     var isExpected = !!disconnects[worker.process.pid];
     var isDead = worker.isDead && worker.isDead();
@@ -153,11 +181,17 @@ function fork(options) {
     }
   } else if (options.model === 'each') {
     options.envs.forEach(env => {
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      newWorker = forkWorker(null, env);
+      newWorker._clusterSettings = cluster.settings;
+    });
+  } else if (options.model === 'file') {
+    options.envs = fs.readFileSync(path.join(__dirname, options.configFile), 'utf8');
+    options.envs.forEach(env => {
       newWorker = forkWorker(null, env);
       newWorker._clusterSettings = cluster.settings;
     });
   }
+
   // fork slaves after workers are forked
   if (options.slaves) {
     var slaves = Array.isArray(options.slaves) ? options.slaves : [options.slaves];
@@ -254,6 +288,8 @@ function fork(options) {
     }
     const worker = cluster.fork(env);
     worker.env = env;
+    this.workerManger.set(JSON.stringify(env) || newWorker.process.pid, newWorker);
+
     return worker;
   }
 }
