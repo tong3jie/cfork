@@ -81,6 +81,8 @@ process.on('uncaughtException', err => {
 
 ### Options
 
+**options can be an object or a file(config path), you can edit content of your config file  and it will work  1 minute  later**
+
 - **exec** : exec file path
 - **slaves** : slave process config
 - **args** : exec arguments
@@ -95,8 +97,6 @@ process.on('uncaughtException', err => {
 - **model**: 
   - 'both':every worker has same evn config
   - 'each':every worker has different evn config
-  - 'file':envs config is file path
-- **configFile**: evns config file path
 ## License
 
 ```

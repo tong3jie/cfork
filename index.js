@@ -5,7 +5,7 @@ var os = require('os');
 var util = require('util');
 var utility = require('utility');
 const fs = require('fs');
-const path = require('path');
+const crypto = require('crypto');
 
 var defer = global.setImmediate || process.nextTick;
 
@@ -26,13 +26,17 @@ module.exports = fork;
  * @return {Cluster}
  */
 
-function fork(options) {
+function fork(option) {
   if (cluster.isWorker) {
     return;
   }
-
-  options = options || {};
-  var count = options.envs || options.count || os.cpus().length;
+  var options;
+  if (typeof option === 'string') {
+    options = JSON.parse(fs.readFileSync(option, 'utf8'));
+  } else if (typeof option === 'object') {
+    options = option || {};
+  }
+  var count = options.envs.length || options.count || os.cpus().length;
   var refork = options.refork !== false;
   var limit = options.limit || 60;
   var duration = options.duration || 60000; // 1 min
@@ -84,38 +88,39 @@ function fork(options) {
   function checkWorker() {
     setInterval(() => {
       const workerSize = workerManger.size;
-      if (options.model === 'file') {
-        options.envs = JSON.parse(fs.readFileSync(options.configFile, 'utf8')).envs;
+      if (typeof option === 'string') {
+        options = JSON.parse(fs.readFileSync(option, 'utf8'));
+      } else if (typeof option === 'object') {
+        options = option || {};
       }
 
-      if (workerSize < (options.envs.length || count)) {
-        options.envs
-          .filter(item => workerManger.has(item))
-          .forEach(item => {
-            newWorker = forkWorker(null, item);
-            newWorker._clusterSettings = cluster.settings;
-          });
-      }
+      // if (workerSize < (options.envs.length || count)) {
+      options.envs
+        .filter(item => !workerManger.has(MD5(JSON.stringify(item))))
+        .forEach(item => {
+          cluster.emit('checkWorker', `checkWorker will fork new worker,because workerSize ${workerSize} !!!less!!! than ${options.envs.length || count} ,env is ${JSON.stringify(item)}`);
+          newWorker = forkWorker(null, item);
+          newWorker._clusterSettings = cluster.settings;
+        });
+      // }
 
-      if (workerSize > (options.envs.length || count)) {
-        for (const key of workerManger.keys()) {
-          if (!options.envs.includes(key)) {
-            const worker = workerManger.get(key);
-            worker.disableRefork = true;
-            worker.kill('cancel');
-            workerManger.delete(key);
-          }
+      // if (workerSize > (options.envs.length || count)) {
+      const envsMD5 = options.envs.map(item => MD5(JSON.stringify(item)));
+      for (const key of workerManger.keys()) {
+        if (!envsMD5.includes(key)) {
+          const worker = workerManger.get(key);
+          cluster.emit('checkWorker', `checkWorker will kill worker,because workerSize ${workerSize} !!!more!!! than ${options.envs.length || count} ,env is ${key},pid is ${worker.process.pid}`);
+          worker.disableRefork = true;
+          process.kill(worker.process.pid, 'SIGKILL');
+          workerManger.delete(key);
         }
       }
-      checkWorker();
+      // }
     }, 60000);
   }
 
   checkWorker();
 
-  cluster.on('fork', worker => {
-    workerManger.set(JSON.stringify(worker.env) || worker.process.pid, worker);
-  });
   cluster.on('disconnect', function (worker) {
     workerManger.delete(worker.process.pid);
     var log = console[worker.disableRefork ? 'info' : 'error'];
@@ -128,6 +133,7 @@ function fork(options) {
       log("[%s] [cfork:master:%s] don't fork, because worker:%s exit event emit before disconnect", utility.logDate(), process.pid, worker.process.pid);
       return;
     }
+
     if (worker.disableRefork) {
       // worker has terminated by master, like egg-cluster master will set disableRefork to true
       log("[%s] [cfork:master:%s] don't fork, because worker:%s will be kill soon", utility.logDate(), process.pid, worker.process.pid);
@@ -156,6 +162,7 @@ function fork(options) {
       // worker disconnect first, exit expected
       return;
     }
+
     if (worker.disableRefork) {
       // worker is killed by master
       return;
@@ -185,18 +192,13 @@ function fork(options) {
       cluster.on('reachReforkLimit', onReachReforkLimit);
     }
   });
+
   if (options.model === 'both' || !options.model) {
     for (let i = 0; i < count; i++) {
       newWorker = forkWorker();
       newWorker._clusterSettings = cluster.settings;
     }
   } else if (options.model === 'each') {
-    options.envs.forEach(env => {
-      newWorker = forkWorker(null, env);
-      newWorker._clusterSettings = cluster.settings;
-    });
-  } else if (options.model === 'file') {
-    options.envs = fs.readFileSync(options.configFile, 'utf8');
     options.envs.forEach(env => {
       newWorker = forkWorker(null, env);
       newWorker._clusterSettings = cluster.settings;
@@ -299,8 +301,12 @@ function fork(options) {
     }
     const worker = cluster.fork(env);
     worker.env = env;
-    this.workerManger.set(JSON.stringify(env) || newWorker.process.pid, newWorker);
-
+    worker.disableRefork = false;
+    workerManger.set(MD5(JSON.stringify(env)) || newWorker.process.pid, newWorker);
     return worker;
+  }
+
+  function MD5(str) {
+    return crypto.createHash('md5').update(str).digest('hex').toString();
   }
 }
