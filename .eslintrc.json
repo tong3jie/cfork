@@ -1,0 +1,45 @@
+{
+  "root": true,
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module"
+  },
+  "extends": ["airbnb-base", "plugin:@typescript-eslint/recommended", "prettier"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "jsdoc", "header"],
+  "ignorePatterns": ["node_modules", "dist", "test", "jest.config.js", "typings"],
+  "env": {
+    "jest": true
+  },
+  "rules": {
+    "no-console": "off",
+    "@typescript-eslint/indent": ["error", 2],
+    "@typescript-eslint/no-explicit-any": 0,
+    "@typescript-eslint/explicit-member-accessibility": 0,
+    "@typescript-eslint/explicit-function-return-type": 0,
+    // "import/no-unresolved": "off",
+    "no-restricted-syntax": "off",
+    "no-await-in-loop": "off",
+    "max-len": [
+      "error",
+      {
+        "code": 180
+      }
+    ],
+    "func-names": "off",
+    "@typescript-eslint/no-var-requires": 0,
+    "import/prefer-default-export": 0,
+    "no-continue": "off",
+    "prefer-rest-params": "off",
+    "array-callback-return": "off",
+    "consistent-return": "off",
+    "@typescript-eslint/camelcase": "off",
+    "no-underscore-dangle": "off",
+    "no-return-await": "off",
+    "class-methods-use-this": "off",
+    "array-bracket-newline": 0,
+    "import/no-unresolved": 0,
+    "import/extensions": 0
+    // "eslint no-param-reassign": ["error", { "props": false }]
+  }
+}

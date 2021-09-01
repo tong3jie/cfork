@@ -1,0 +1,26 @@
+{
+  "args": ["hello"],
+  "model": "each",
+  "envs": [
+    {
+      "host": "39.107.251.14",
+      "port": 7890,
+      "sp_Id": "900026",
+      "secret": "KCcBT",
+      "serviceId": "FONMTN",
+      "srcId": "5",
+      "Version": 32,
+      "protocol": "cmpp"
+    },
+    {
+      "host": "39.107.251.14",
+      "port": 7890,
+      "sp_Id": "900026",
+      "secret": "KCcBT",
+      "serviceId": "FONMTN",
+      "srcId": "5",
+      "Version": 32,
+      "protocol": "smgp"
+    }
+  ]
+}

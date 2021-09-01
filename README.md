@@ -1,36 +1,29 @@
-cfork
+<!--
+ * @author: juju
+ * @Date: 2021-08-30 22:39:10
+ * @LastEditTime: 2021-09-01 17:50:51
+ * @LastEditors: juju
+ * @Description: 
+ * @FilePath: \cfork\README.md
+-->
+tfork
 =======
 
-[![NPM version][npm-image]][npm-url]
-[![build status][travis-image]][travis-url]
-[![Test coverage][codecov-image]][codecov-url]
-[![David deps][david-image]][david-url]
-[![Known Vulnerabilities][snyk-image]][snyk-url]
-[![npm download][download-image]][download-url]
+this project was fork the module of cfork.
 
-[npm-image]: https://img.shields.io/npm/v/cfork.svg?style=flat-square
-[npm-url]: https://npmjs.org/package/cfork
-[travis-image]: https://img.shields.io/travis/node-modules/cfork.svg?style=flat-square
-[travis-url]: https://travis-ci.org/node-modules/cfork
-[codecov-image]: https://codecov.io/gh/node-modules/cfork/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/node-modules/cfork
-[david-image]: https://img.shields.io/david/node-modules/cfork.svg?style=flat-square
-[david-url]: https://david-dm.org/node-modules/cfork
-[snyk-image]: https://snyk.io/test/npm/cfork/badge.svg?style=flat-square
-[snyk-url]: https://snyk.io/test/npm/cfork
-[download-image]: https://img.shields.io/npm/dm/cfork.svg?style=flat-square
-[download-url]: https://npmjs.org/package/cfork
+we found cfork cann't fork different worker by env
 
 cluster fork and restart easy way.
 
 * Easy fork with worker file path
 * Handle worker restart, even it was exit unexpected.
 * Auto error log process `uncaughtException` event
+* set `envs`, worker count is length of envs ,and every worker's env different. if worker was exit because of configFile, will not refork.
 
 ## Install
 
 ```bash
-$ npm install cfork --save
+$ npm install tfork --save
 ```
 
 ## Usage
@@ -38,31 +31,26 @@ $ npm install cfork --save
 ### Example
 
 ```js
-const cfork = require('cfork');
+const tfork = require('tfork');
 const util = require('util');
 
-cfork({
+tfork({
   exec: '/your/app/worker.js',
-  // slaves: ['/your/app/slave.js'],
-  // count: require('os').cpus().length,
-})
+  count: require('os').cpus().length,
+}, callback())
+// or tfork('./config.json')
+// callback() is optional
 .on('fork', worker => {
-  console.warn('[%s] [worker:%d] new worker start', Date(), worker.process.pid);
-})
+  console.warn(`new worker was started`)
 .on('disconnect', worker => {
-  console.warn('[%s] [master:%s] wroker:%s disconnect, exitedAfterDisconnect: %s, state: %s.',
-    Date(), process.pid, worker.process.pid, worker.exitedAfterDisconnect, worker.state);
+  console.warn(`worker will  disconnect`);
 })
 .on('exit', (worker, code, signal) => {
-  const exitCode = worker.process.exitCode;
-  const err = new Error(util.format('worker %s died (code: %s, signal: %s, exitedAfterDisconnect: %s, state: %s)',
-    worker.process.pid, exitCode, signal, worker.exitedAfterDisconnect, worker.state));
-  err.name = 'WorkerDiedError';
-  console.error('[%s] [master:%s] wroker exit: %s', Date(), process.pid, err.stack);
-})
+  
+  console.error(`${worker.process.pid}`)
+  })
 
-// if you do not listen to this event
-// cfork will output this message to stderr
+
 .on('unexpectedExit', (worker, code, signal) => {
   // logger what you want
 });
@@ -84,19 +72,15 @@ process.on('uncaughtException', err => {
 **options can be an object or a file(config path), you can edit content of your config file  and it will work  1 minute  later**
 
 - **exec** : exec file path
-- **slaves** : slave process config
 - **args** : exec arguments
 - **count** : fork worker nums, default is `os.cpus().length`
-- **refork** : refork when worker disconnect or unexpected exit, default is `true`
-- **limit**: limit refork times within the `duration`, default is `60`
 - **duration**: default is `60000`, one minute (so, the `refork times` < `limit / duration`)
-- **autoCoverage**: auto fork with istanbul when `running_under_istanbul` env set, default is `false`
 - **env**: attach some environment variable key-value pairs to the worker / slave process, default to an empty object.
-- **windowsHide**: Hide the forked processes console window that would normally be created on Windows systems, default to false.
 - **evns**: if you want every worker has different env config ,you can set this field, default is [].example, envs:[{name:1},{name:2}]
 - **model**: 
   - 'both':every worker has same evn config
   - 'each':every worker has different evn config
+- **callback**: when the worker was exit ,`callback` will be wake up 
 ## License
 
 ```
