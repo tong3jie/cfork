@@ -1,10 +1,10 @@
 {
   "name": "tfork",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "cluster fork and restart easy way",
   "main": "./dist/index.js",
   "files": [
-    "index.js"
+    "dist/"
   ],
   "scripts": {    
   },

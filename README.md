@@ -1,7 +1,7 @@
 <!--
  * @author: juju
  * @Date: 2021-08-30 22:39:10
- * @LastEditTime: 2021-09-01 17:50:51
+ * @LastEditTime: 2021-09-01 18:17:12
  * @LastEditors: juju
  * @Description: 
  * @FilePath: \cfork\README.md
@@ -40,6 +40,7 @@ tfork({
 }, callback())
 // or tfork('./config.json')
 // callback() is optional
+.start()
 .on('fork', worker => {
   console.warn(`new worker was started`)
 .on('disconnect', worker => {
@@ -53,12 +54,13 @@ tfork({
 
 .on('unexpectedExit', (worker, code, signal) => {
   // logger what you want
-});
+})
 
 // emit when reach refork times limit
 .on('reachReforkLimit', () => {
   // do what you want
-});
+}).getWorkers()
+// return all workers
 
 // if you do not listen to this event
 // cfork will listen it and output the error message to stderr

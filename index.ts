@@ -50,6 +50,7 @@ class Tfork {
     this.exitCallback = exitCallback;
     if (typeof option === 'string') {
       this.options = JSON.parse(fs.readFileSync(option, 'utf8'));
+      // 监视文件修改情况
       fs.watchFile(option, () => {
         console.log(`configFile is update`);
         this.checkWorker()
@@ -151,6 +152,7 @@ class Tfork {
     return cluster;
   }
 
+  // 返回所有worker
   getWorkers():Map<string,any> {
     return this.workerManger
   }
@@ -196,6 +198,7 @@ class Tfork {
     }
   }
 
+  // 自动检测程配置文件，作为监视文件的托底
   autoCheck() {
     setInterval(() => {
       if (typeof this.option === 'string') {
