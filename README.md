@@ -1,7 +1,7 @@
 <!--
  * @author: juju
  * @Date: 2021-08-30 22:39:10
- * @LastEditTime: 2021-09-01 18:17:12
+ * @LastEditTime: 2021-09-05 15:27:14
  * @LastEditors: juju
  * @Description: 
  * @FilePath: \cfork\README.md
@@ -9,7 +9,7 @@
 tfork
 =======
 
-this project was fork the module of cfork.
+this project was fork the package of cfork.
 
 we found cfork cann't fork different worker by env
 
@@ -34,7 +34,7 @@ $ npm install tfork --save
 const tfork = require('tfork');
 const util = require('util');
 
-tfork({
+new tfork({
   exec: '/your/app/worker.js',
   count: require('os').cpus().length,
 }, callback())
@@ -79,7 +79,7 @@ process.on('uncaughtException', err => {
 - **duration**: default is `60000`, one minute (so, the `refork times` < `limit / duration`)
 - **env**: attach some environment variable key-value pairs to the worker / slave process, default to an empty object.
 - **evns**: if you want every worker has different env config ,you can set this field, default is [].example, envs:[{name:1},{name:2}]
-- **model**: 
+- **clusterModel**: 
   - 'both':every worker has same evn config
   - 'each':every worker has different evn config
 - **callback**: when the worker was exit ,`callback` will be wake up 

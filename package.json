@@ -1,13 +1,12 @@
 {
   "name": "tfork",
-  "version": "2.0.0",
+  "version": "2.0.4",
   "description": "cluster fork and restart easy way",
   "main": "./dist/index.js",
   "files": [
     "dist/"
   ],
-  "scripts": {    
-  },
+  "scripts": {},
   "dependencies": {},
   "devDependencies": {
     "ts-node": "^10.2.1",
