@@ -2,10 +2,33 @@ import * as os from 'os';
 import * as process from 'process';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { join } from 'path';
+import * as winston from 'winston';
 
 const cluster = require('cluster');
 
+const baseDir = process.cwd();
 const defer = global.setImmediate || process.nextTick;
+
+const infoStream = fs.createWriteStream(join(baseDir, 'logs', 'ctdOut.log'), {
+  flags: 'a',
+});
+const errorStream = fs.createWriteStream(join(baseDir, 'logs', 'ctdErr.log'), {
+  flags: 'a',
+});
+const Logger = winston.createLogger({
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.Stream({
+      stream: infoStream,
+      level: 'info',
+    }),
+    new winston.transports.Stream({
+      stream: errorStream,
+      level: 'error',
+    }),
+  ],
+});
 
 /**
  * cluster fork
@@ -18,7 +41,7 @@ const defer = global.setImmediate || process.nextTick;
  *   - {Number} [count]    worker num, default is `os.cpus().length`
  *   - {Boolean} [refork]  refork when disconnect and unexpected exit, default is `true`
  *   - {Boolean} [autoCoverage] auto fork with istanbul when `running_under_istanbul` env set, default is `false`
- *   - {Boolean} [windowsHide] Hide the forked processes console window that would normally be created on Windows systems. Default: false.
+ *   - {Boolean} [windowsHide] Hide the forked processes Logger window that would normally be created on Windows systems. Default: false.
  * @return {Cluster}
  */
 interface Option {
@@ -57,7 +80,7 @@ class Tfork {
       // 监视文件修改情况
 
       fs.watchFile(option, () => {
-        console.log(`configFile is update`);
+        Logger.info(`configFile is update`);
         this.checkWorker();
       });
     } else if (typeof option === 'object') {
@@ -71,7 +94,7 @@ class Tfork {
 
     this.reforks = [];
 
-    cluster.setupPrimary(this.options);
+    cluster.setupMaster(this.options);
 
     this.autoCheck();
   }
@@ -81,7 +104,7 @@ class Tfork {
       return;
     }
 
-    if (this.options?.clusterModel === 'both' || !this.options.model) {
+    if (this.options?.clusterModel === 'both') {
       for (let i = 0; i < this.options.count; i += 1) {
         const newWorker = this.forkWorker();
         newWorker._clusterSettings = cluster.settings;
@@ -99,11 +122,11 @@ class Tfork {
     }
 
     cluster.on('disconnect', worker => {
-      console.log(
+      Logger.info(
         `[${new Date()}] [cfork:master:${process.pid}] worker:${worker.process.pid} disconnect`
       );
       if (worker.isDead()) {
-        console.log(
+        Logger.info(
           `[${new Date()}] [cfork:master:${process.pid}] don't fork, because worker:${
             worker.process.pid
           } exit event emit before disconnect`
@@ -112,7 +135,7 @@ class Tfork {
       }
 
       if (worker.disableRefork) {
-        console.log(
+        Logger.info(
           `[${new Date()}] [cfork:master:${process.pid}] don't fork, because worker:${
             worker.process.pid
           } will be kill soon`
@@ -121,18 +144,18 @@ class Tfork {
       if (this.allow()) {
         const newWorker = this.forkWorker(worker._clusterSettings, worker.env);
         newWorker._clusterSettings = worker._clusterSettings;
-        console.log(
+        Logger.info(
           `[${new Date()}] [cfork:master:${process.pid}] new worker:${
             worker.process.pid
           } fork (state: ${newWorker.state})`
         );
       } else {
-        console.log(`[${new Date()}] [cfork:master:${process.pid}] don't fork new work `);
+        Logger.info(`[${new Date()}] [cfork:master:${process.pid}] don't fork new work `);
       }
     });
 
     cluster.on('exit', (worker, code, signal) => {
-      console.log(
+      Logger.info(
         `[${new Date()}] [cfork:master:${process.pid}] worker:${
           worker.process.pid
         } exit (code: ${code})`
@@ -147,14 +170,14 @@ class Tfork {
       if (this.allow()) {
         const newWorker = this.forkWorker(worker._clusterSettings, worker.env);
         newWorker._clusterSettings = worker._clusterSettings;
-        console.log(
+        Logger.info(
           `[${new Date()}] [cfork:master:${process.pid}] new worker:${
             worker.process.pid
           } fork (state: ${newWorker.state})`
         );
       } else {
         if (this.exitCallback) this.exitCallback();
-        console.log(`[${new Date()}] [cfork:master:${process.pid}] don't fork new work `);
+        Logger.info(`[${new Date()}] [cfork:master:${process.pid}] don't fork new work `);
       }
       cluster.emit('unexpectedExit', worker, code, signal);
     });
@@ -228,7 +251,7 @@ class Tfork {
   forkWorker(settings?, env?) {
     if (settings) {
       cluster.settings = settings;
-      cluster.setupPrimary();
+      cluster.setupMaster({ silent: true });
     }
     const worker = cluster.fork(env);
     worker.env = env;
@@ -248,10 +271,10 @@ class Tfork {
           if (!err) {
             return;
           }
-          console.error(
+          Logger.error(
             `[${new Date()}] [cfork:master:${process.pid}] master uncaughtException: ${err.stack}`
           );
-          console.error(err);
+          Logger.error(err);
         });
       }
       if (cluster.listeners('unexpectedExit').length === 0) {
@@ -261,12 +284,12 @@ class Tfork {
           );
           err.name = 'WorkerDiedUnexpectedError';
 
-          console.error(`[${new Date()}] [cfork:master:${process.pid}]  ${err.stack}`);
+          Logger.error(`[${new Date()}] [cfork:master:${process.pid}]  ${err.stack}`);
         });
       }
       if (cluster.listeners('reachReforkLimit').length === 0) {
         cluster.on('reachReforkLimit', () => {
-          console.error(`[${new Date()}] [cfork:master:${process.pid}] worker died too fast  `);
+          Logger.error(`[${new Date()}] [cfork:master:${process.pid}] worker died too fast  `);
         });
       }
     });

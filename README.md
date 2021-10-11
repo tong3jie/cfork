@@ -1,7 +1,7 @@
 <!--
  * @author: juju
  * @Date: 2021-08-30 22:39:10
- * @LastEditTime: 2021-09-05 15:27:14
+ * @LastEditTime: 2021-09-06 15:42:29
  * @LastEditors: juju
  * @Description: 
  * @FilePath: \cfork\README.md
@@ -11,7 +11,7 @@ tfork
 
 this project was fork the package of cfork.
 
-we found cfork cann't fork different worker by env
+we found cfork can not fork different worker by env
 
 cluster fork and restart easy way.
 
