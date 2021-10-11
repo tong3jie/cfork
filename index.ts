@@ -88,7 +88,7 @@ class Tfork {
       this.options = {
         ...this.options,
         count: this.options?.envs?.length || this.options.count || os.cpus().length,
-        duration: this.options.duration || 60000,
+        duration: this.options.duration || 60,
       };
     }
 
@@ -198,7 +198,7 @@ class Tfork {
       this.options = JSON.parse(fs.readFileSync(this.option, 'utf8'));
     }
 
-    cluster.setupPrimary(this.options);
+    cluster.setupMaster(this.options);
 
     if (this.option?.envs && Array.isArray(this.option?.envs)) {
       // 检查是否有新配置，需要增加进程
